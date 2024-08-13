@@ -3,3 +3,7 @@
 *.csv
 build/
 *.spec
+__pycache__/
+test.py
+dist/HKOWeatherData.exe
+exe/HKOWeatherData.exe

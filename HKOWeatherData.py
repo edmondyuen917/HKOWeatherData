@@ -85,11 +85,8 @@ def main():
         period = 10
     print(f"Period: {period} seconds")
 
-    temp_rh_log.chk_output_file()
-    temp_time, rh_time = temp_rh_log.init_last_time()
-
-    latest_1min_pressure.chk_output_file()
-    p_time = latest_1min_pressure.init_last_time()
+    temp_time, rh_time = temp_rh_log.init()
+    p_time = latest_1min_pressure.init()
 
     while True:
         t, r = temp_rh_log.temperature_log(temp_time, rh_time)
