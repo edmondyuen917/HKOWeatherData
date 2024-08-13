@@ -5,3 +5,4 @@ rem pyinstaller --onefile test.pypython
 
 
 pyinstaller --onefile HKOWeatherData.py
+@REM pyinstaller --onefile latest_1min_pressure.py

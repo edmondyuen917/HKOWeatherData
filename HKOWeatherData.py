@@ -1,19 +1,3 @@
-# test git add 16:24
-# test git add 16:28 on notebook
-# test git add 16:29 on desktop
-# test git add 16:29 on notebook
-
-
-'''
-API to retrieve daily mean temperature by specified year
-https://data.weather.gov.hk/weatherAPI/opendata/opendata.php?dataType=CLMTEMP&lang=en&rformat=csv&station=CCH&year=2024
-
-
-API to retrieve current temperature and RH
-https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=en
-
-'''
-
 import requests
 import time
 import os
@@ -22,84 +6,11 @@ import sys
 from datetime import datetime, timezone, timedelta
 from csv import reader
 import pytz
-
+import temp_rh_log, latest_1min_pressure
 # print('Number of arguments:', len(sys.argv), 'arguments.')
 # print('Argument List:', str(sys.argv))
 
 
-
-api_url = 'https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=en'
-temp_file_out = "temperature.csv"
-rh_file_out = "rh.csv"
-
-# init last time from temperature.csv and rh.csv
-def init_last_time():
-    if not os.path.exists(temp_file_out):
-        temp_last_update_time = datetime.fromisoformat('2024-01-01T10:11:00+08:00')
-    else:
-        with open(temp_file_out, "r") as tempfile:
-            lines = tempfile.readlines()
-            line = lines [len(lines)-1].split(",")
-            format = '%m/%d/%Y %H:%M:%S'
-            dt = datetime.strptime(line[0], format) 
-            tz = pytz.timezone('Asia/Hong_Kong')
-            temp_last_update_time = tz.localize(dt, is_dst=None)
-            print(f'init temp_last_update_time: {temp_last_update_time}')
-
-    if not os.path.exists(rh_file_out):
-        rh_last_update_time = datetime.fromisoformat('2024-01-01T10:11:00+08:00')
-    else:
-        with open(rh_file_out, "r") as rhfile:
-            lines = rhfile.readlines()
-            line = lines [len(lines)-1].split(",")
-            format = '%m/%d/%Y %H:%M:%S'
-            dt = datetime.strptime(line[0], format) 
-            tz = pytz.timezone('Asia/Hong_Kong')
-            rh_last_update_time = tz.localize(dt, is_dst=None)
-            print(f'init rh_last_update_time: {rh_last_update_time}')            
-
-    return temp_last_update_time, rh_last_update_time
-
-def save_temperature_rh(temp_last_update_time,rh_last_update_time):
-    # print(f'temp_last_update_time: {temp_last_update_time},rh_last_update_time: {rh_last_update_time} ')
-    try:
-        with open(temp_file_out, "a") as tempfile, open(rh_file_out, "a") as rhfile:
-            response = requests.get(api_url)
-            datas = response.json()
-            updateTime = datas['updateTime']
-            dt = datetime.fromisoformat(updateTime)
-            # print(dt)
-            if (dt > temp_last_update_time):
-                print('record temperature')
-                temp_last_update_time = dt
-                dt_str = dt.strftime("%m/%d/%Y %H:%M:%S")
-                temp_datas = datas['temperature']['data']
-                for temp_data in temp_datas:
-                    # print(temp_data)
-                    place = temp_data['place']
-                    temperature = temp_data['value']
-                    s = dt_str + ',' + place + ',' + str(temperature)
-                    # print(s)
-                    print(s, file=tempfile)
-
-            rh_updateTime = datas['humidity']['recordTime']
-            rh_dt = datetime.fromisoformat(rh_updateTime)
-            if (rh_dt > rh_last_update_time):
-                print('record RH')
-                rh_last_update_time = rh_dt
-                dt_str = rh_dt.strftime("%m/%d/%Y %H:%M:%S")
-                rh_datas = datas['humidity']['data']
-                for rh_data in rh_datas:
-                    # print(temp_data)
-                    place = rh_data['place']
-                    rh = rh_data['value']
-                    s = dt_str + ',' + place + ',' + str(rh)
-                    # print(s)
-                    print(s, file=rhfile)
-            return temp_last_update_time, rh_last_update_time
-    except:
-        print('error!')
-        return 0,0
 
 '''
     Save temperature/rh figure/ pressure while time is betwen 23:45 - 0:00
@@ -174,17 +85,26 @@ def main():
         period = 10
     print(f"Period: {period} seconds")
 
-    temp_time, rh_time = init_last_time()
+    temp_rh_log.chk_output_file()
+    temp_time, rh_time = temp_rh_log.init_last_time()
+
+    latest_1min_pressure.chk_output_file()
+    p_time = latest_1min_pressure.init_last_time()
+
     while True:
-        t, r = save_temperature_rh(temp_time, rh_time)
+        t, r = temp_rh_log.temperature_log(temp_time, rh_time)
         if t != 0 or r != 0:
             temp_time, rh_time = t, r
+
+        p = latest_1min_pressure.pressure_log(p_time)
+        if p != 0:  p_time  = p
+
         save_weather_figure()
         save_heat_stress_figure()
+
         now = datetime.now()
         print(now.strftime("%d/%m/%Y %H:%M:%S"))
         time.sleep(period)
-
 
 if __name__ == "__main__":
     main()
