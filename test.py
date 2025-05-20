@@ -1,9 +1,3 @@
-lists = []
+list = [0,1,2,3]
 
-if (lists):
-    print('has data')
-else:
-    print('no data')
-
-print(len(lists))
-
+print(list[0:2])

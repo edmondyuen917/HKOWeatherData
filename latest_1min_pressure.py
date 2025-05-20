@@ -41,15 +41,15 @@ site_list = [
 '''
       
 
-def init():
-    global site_list
-
-    try:
+def pressure_log():
+    try: 
+        # initialize site_list & last_time from output file
         if not os.path.exists(output_file):
             s = 'Time' 
             with open(output_file, "a") as f:
                 print(s, file=f)
             site_list = []               
+            last_time = datetime.fromisoformat("2022-12-31 00:00:00")
         else:
             with open(output_file,"r",encoding="utf-8") as csvfile:
                 csv_reader = reader((csvfile), delimiter=",")
@@ -57,29 +57,15 @@ def init():
                 site_list = list_of_rows[0]
                 del site_list[0]        # delete "TIME" item
 
-        if not os.path.exists(output_file):
-            last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
-        else:
-            with open(output_file, "r") as tempfile:
-                lines = tempfile.readlines()
-                if len(lines) == 1:         # header only
-                    last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
+                if len(list_of_rows) == 1:          # header only
+                    last_time = datetime.fromisoformat("2022-12-31 00:00:00")
                 else:
-                    line = lines [len(lines)-1].split(",")
+                    line = list_of_rows [len(list_of_rows)-1]
                     format = '%m/%d/%Y %H:%M:%S'
-                    last_update_time = datetime.strptime(line[0], format) 
-        print(f'init p_last_update_time: {last_update_time}')
-        return last_update_time
-    
-    except:
-        print(Exception)
-        print('pressure initialization error!')
-        return 0
+                    last_time = datetime.strptime(line[0], format) 
+                    # print(f'last time:{last_time}')
 
-def pressure_log(last_time):
-    global site_list
-
-    try: 
+        # download data from API
         with open(download_file, "wb") as f:
             response = requests.get(url)
             f.write(response.content)        
@@ -101,6 +87,7 @@ def pressure_log(last_time):
         t = datetime(year, month, day, hour, minute, 0)
 
         if (t > last_time):
+            print('Save pressure')
             # check if any new site in download data
             new_sites = []
             dict_keys = pressure_dict.keys()
@@ -121,7 +108,6 @@ def pressure_log(last_time):
                 os.rename('temp.csv', output_file)
 
             # update pressure data
-
             s = (t.strftime("%m/%d/%Y %H:%M:%S")) 
             for site in site_list:
                 if site in pressure_dict:
@@ -134,7 +120,6 @@ def pressure_log(last_time):
             with open(output_file, "a") as f:
                 print(s)
                 print(s, file=f)
-        return t
 
     except:
         print(Exception)
@@ -152,10 +137,12 @@ def main():
         period = 10
     print(f"Period: {period} seconds")
 
-    last_time = init()
+    # last_time = init()
     while True:
-        last_time_temp = pressure_log(last_time)
-        if last_time_temp != 0:  last_time  = last_time_temp
+        # last_time_temp = pressure_log(last_time)
+        # if last_time_temp != 0:  last_time  = last_time_temp
+        pressure_log()
+
         now = datetime.now()
         print(now.strftime("%d/%m/%Y %H:%M:%S"))
         time.sleep(period)

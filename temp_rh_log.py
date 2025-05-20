@@ -53,15 +53,15 @@ site_list = [
 ]
 '''
 
-def init():
-    global site_list, rh_site_list
-
+def temperature_log():
     try:
+        # initialize temperature site_list & last_time from output file        
         if not os.path.exists(temp_file_out):
             s = 'Time' 
             with open(temp_file_out, "a") as f:
                 print(s, file=f)
             site_list = []
+            temp_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")            
         else:
             with open(temp_file_out,"r",encoding="utf-8") as csvfile:
                 csv_reader = reader((csvfile), delimiter=",")
@@ -69,11 +69,22 @@ def init():
                 site_list = list_of_rows[0]
                 del site_list[0]        # delete "TIME" item
 
+                if len(list_of_rows) == 1:         # header only
+                    temp_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
+                else:
+                    line = list_of_rows [len(list_of_rows)-1]
+                    format = '%m/%d/%Y %H:%M:%S'
+                    temp_last_update_time = datetime.strptime(line[0], format) 
+        tz = pytz.timezone('Asia/Hong_Kong')
+        temp_last_update_time = tz.localize(temp_last_update_time, is_dst=None)
+                
+        # initialize RH site_list & last_time from output file                                
         if not os.path.exists(rh_file_out):
             s = 'Time' 
             with open(rh_file_out, "a") as f:
                 print(s, file=f)
             rh_site_list =[]
+            rh_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")            
         else:
             with open(rh_file_out,"r",encoding="utf-8") as csvfile:
                 csv_reader = reader((csvfile), delimiter=",")
@@ -81,50 +92,19 @@ def init():
                 rh_site_list = list_of_rows[0]
                 del rh_site_list[0]        # delete "TIME" item
 
-        if not os.path.exists(temp_file_out):
-            temp_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
-        else:
-            with open(temp_file_out, "r") as tempfile:
-                lines = tempfile.readlines()
-                if len(lines) == 1:         # header only
-                    temp_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
-                else:
-                    line = lines [len(lines)-1].split(",")
-                    format = '%m/%d/%Y %H:%M:%S'
-                    temp_last_update_time = datetime.strptime(line[0], format) 
-        tz = pytz.timezone('Asia/Hong_Kong')
-        temp_last_update_time = tz.localize(temp_last_update_time, is_dst=None)
-
-        if not os.path.exists(rh_file_out):
-            rh_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
-        else:
-            with open(rh_file_out, "r") as rhfile:
-                lines = rhfile.readlines()
-                if len(lines) == 1:         # header only
+                if len(list_of_rows) == 1:         # header only
                     rh_last_update_time = datetime.fromisoformat("2022-12-31 00:00:00")
                 else:
-                    line = lines [len(lines)-1].split(",")
+                    line = list_of_rows [len(list_of_rows)-1]
                     format = '%m/%d/%Y %H:%M:%S'
                     rh_last_update_time = datetime.strptime(line[0], format) 
         tz = pytz.timezone('Asia/Hong_Kong')
         rh_last_update_time = tz.localize(rh_last_update_time, is_dst=None)
-        
-        print(f'temperature last time: {temp_last_update_time}, RH last time: {rh_last_update_time}, ')
-        return temp_last_update_time, rh_last_update_time
-    
-    except:
-        print(Exception)
-        print('temp/rh initialize error!')
-        return 0
+        # print(f'temperature last time: {temp_last_update_time}, RH last time: {rh_last_update_time}, ')
 
-
-def temperature_log(temp_last_update_time,rh_last_update_time):
-    global site_list, rh_site_list
-
-    try:
+        # download data from API
         response = requests.get(url)
         datas = response.json()
-        # updateTime = datas['updateTime']
         updateTime = datas['temperature']['recordTime']
         dt = datetime.fromisoformat(updateTime)
         if (dt > temp_last_update_time):
@@ -194,7 +174,7 @@ def temperature_log(temp_last_update_time,rh_last_update_time):
                         lines[0] = lines[0].strip('\n') + ',' + new_site 
                         rh_site_list.append(new_site)
                     for line in lines:
-                        print(line, file = fw)
+                        print(line.strip('\n'), file = fw)
 
                 os.remove(rh_file_out)                        
                 os.rename('temp.csv', rh_file_out)
@@ -212,8 +192,6 @@ def temperature_log(temp_last_update_time,rh_last_update_time):
             with open(rh_file_out, "a") as f:
                 print(s)
                 print(s, file=f)
-        return temp_last_update_time, rh_last_update_time
-    
 
     except:
         print('temp/rh log error!')
@@ -234,11 +212,12 @@ def main():
     print(f"Period: {period} seconds")
 
 
-    temp_time, rh_time = init()
+    # temp_time, rh_time = init()
     while True:
-        t, r = temperature_log(temp_time, rh_time)
-        if t != 0 or r != 0:
-            temp_time, rh_time = t, r
+        # t, r = temperature_log(temp_time, rh_time)
+        # if t != 0 or r != 0:
+        #     temp_time, rh_time = t, r
+        temperature_log()
         now = datetime.now()
         print(now.strftime("%d/%m/%Y %H:%M:%S"))
         time.sleep(period)
